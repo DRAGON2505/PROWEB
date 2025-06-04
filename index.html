@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dragon Predictor</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+
+    body {
+      background: linear-gradient(270deg, #1a1a2e, #16213e, #0f3460);
+      background-size: 600% 600%;
+      animation: animatedBackground 18s ease infinite;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    @keyframes animatedBackground {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .dragon-title {
+      position: fixed;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 42px;
+      font-weight: bold;
+      color: #00fff7;
+      text-shadow: 0 0 15px #00fff7;
+      user-select: none;
+      z-index: 10;
+    }
+
+    .box {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 80px 100px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 0 40px #00fff7;
+      width: 700px;
+      color: #00fff7;
+    }
+
+    #result {
+      font-size: 68px;
+      margin: 30px 0;
+      color: #00fff7;
+      font-weight: bold;
+      text-shadow: 0 0 20px #00fff7;
+    }
+
+    .textview {
+      font-size: 28px;
+      font-weight: bold;
+      color: #ccc;
+      margin: 12px 0;
+    }
+
+    button {
+      padding: 20px 60px;
+      font-size: 24px;
+      background-color: #00fff7;
+      color: black;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: 0 0 15px #00fff7;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover:not(:disabled) {
+      background-color: #00e0e0;
+    }
+
+    button:disabled {
+      background-color: #444;
+      color: #222;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .login-box {
+      background: rgba(0, 0, 0, 0.8);
+      padding: 50px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 0 30px #00fff7;
+      width: 400px;
+      color: #00fff7;
+    }
+
+    input {
+      display: block;
+      margin: 16px auto;
+      padding: 14px;
+      width: 90%;
+      font-size: 20px;
+      border-radius: 10px;
+      border: 1px solid #00fff7;
+      background: #000;
+      color: #00fff7;
+      font-weight: bold;
+    }
+
+    input::placeholder {
+      color: #666;
+    }
+
+    #predictor {
+      display: none;
+    }
+
+    /* Toast Style */
+    .toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #00fff7;
+      color: black;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 18px;
+      z-index: 1000;
+      box-shadow: 0 0 10px rgba(0,255,255,0.5);
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="dragon-title">DRAGON PREDICTOR</div>
+
+  <!-- Login -->
+  <div class="login-box" id="login">
+    <h2>Enter Password</h2>
+    <input type="password" id="password" placeholder="Password" autocomplete="off" />
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <!-- Predictor -->
+  <div id="predictor" class="container">
+    <div class="box">
+      <div class="textview" id="textview1">Period: -</div>
+      <div class="textview" id="textview2">00:00</div>
+      <div id="result">-</div>
+      <button id="predictBtn">Predict</button>
+    </div>
+  </div>
+
+  <script>
+    let lastPeriod = "";
+
+    const predictBtn = document.getElementById("predictBtn");
+    const resultEl = document.getElementById("result");
+    const textview1 = document.getElementById("textview1");
+    const textview2 = document.getElementById("textview2");
+
+    function getCurrentPeriod() {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const ist = new Date(utc + 5.5 * 60 * 60000);
+
+      const base = new Date(ist.getFullYear(), ist.getMonth(), ist.getDate(), 5, 29, 0, 0);
+      const diffMins = Math.floor((ist - base) / 60000);
+      const periodNum = diffMins >= 0 ? diffMins : 0;
+
+      const dateStr = ist.toISOString().split("T")[0].replace(/-/g, "");
+      const periodStr = String(periodNum).padStart(4, '0');
+      return {
+        code: `${dateStr}100001${periodStr}`,
+        display: periodNum
+      };
+    }
+
+    function updateTimeViews() {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const ist = new Date(utc + 5.5 * 60 * 60000);
+      const seconds = ist.getSeconds();
+      const remaining = 60 - seconds;
+
+      textview2.textContent = `00:${String(remaining).padStart(2, '0')}`;
+      const period = getCurrentPeriod();
+      textview1.textContent = `Period: ${period.code}`;
+
+      if (period.code !== lastPeriod) {
+        predictBtn.disabled = false;
+        resultEl.textContent = "-";
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.textContent = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
+
+    function login() {
+      const p = document.getElementById("password").value.trim();
+      if (p === "DRAGON") {
+        document.getElementById("login").style.display = "none";
+        document.getElementById("predictor").style.display = "block";
+        window.location.href = "https://t.me/+gLb80Gm4vjYwNDI1";
+      } else {
+        alert("Invalid password.");
+      }
+    }
+
+    function predict() {
+      const current = getCurrentPeriod();
+      if (current.code === lastPeriod) {
+        showToast("Wait for next period ⏳");
+        predictBtn.disabled = true;
+        return;
+      }
+
+      const rand = Math.floor(Math.random() * 10);
+      const predicted = rand <= 4 ? "𝚂𝙼𝙰𝙻𝙻" : "𝙱𝙸𝙶";
+      const reversed = predicted === "𝚂𝙼𝙰𝙻𝙻" ? "𝙱𝙸𝙶" : "𝚂𝙼𝙰𝙻𝙻";
+
+      resultEl.textContent = reversed;
+      lastPeriod = current.code;
+      predictBtn.disabled = true;
+    }
+
+    document.getElementById("loginBtn").addEventListener("click", login);
+    predictBtn.addEventListener("click", predict);
+
+    setInterval(updateTimeViews, 1000);
+    updateTimeViews();
+  </script>
+</body>
+</html>
